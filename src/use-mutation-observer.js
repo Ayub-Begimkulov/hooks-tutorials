@@ -1,22 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLatest } from './use-latest';
+import { useCombinedRef } from './use-combined-ref';
 
-function useMutationObserver(ref, cb) {
+export function useMutationObserver(cb, options) {
+  const [element, setElement] = useState(null);
   const latestCb = useLatest(cb);
 
   useEffect(() => {
-    const element = ref.current;
-
     if (!element) return;
 
-    const observer = new MutationObserver(entries => {
-      if (entries[0]) {
-        latestCb.current();
-      }
+    const observer = new MutationObserver((...args) => {
+      latestCb.current(...args);
     });
 
-    observer.observe(element);
+    observer.observe(element, options);
 
-    return () => observer.unov;
-  }, [ref, latestCb]);
+    return () => observer.disconnect();
+  }, [element, latestCb, options]);
+
+  return setElement;
+}
+
+export function MutationObserverComponent({
+  children,
+  onMutation,
+  options,
+  nodeRef,
+}) {
+  const mutationRef = useMutationObserver(onMutation, options);
+
+  const combinedRef = useCombinedRef(nodeRef, mutationRef);
+
+  return children(combinedRef);
 }
